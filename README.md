@@ -1,1 +1,1 @@
-# moder-bot
+# moder-tg-bot
