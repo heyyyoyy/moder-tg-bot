@@ -15,7 +15,7 @@ class Base(peewee.Model):
 
 
 class User(Base):
-    uid = peewee.PrimaryKeyField()
+    id = peewee.PrimaryKeyField()
     name = peewee.CharField()
     username = peewee.CharField(null=True)
     registration = peewee.DateTimeField(default=datetime.now)
@@ -26,11 +26,15 @@ class Group(Base):
     id = peewee.BigIntegerField(primary_key=True)
     name = peewee.CharField()
     link = peewee.CharField()
+    registration = peewee.DateTimeField(default=datetime.now)
+    deleted = peewee.BooleanField(default=False)
 
 
 class UserToGroup(Base):
     user = peewee.ForeignKeyField(User, related_name='to_user', on_delete='CASCADE')
     group = peewee.ForeignKeyField(Group, related_name='to_group', on_delete='CASCADE')
+    registration = peewee.DateTimeField(default=datetime.now)
+    deleted = peewee.BooleanField(default=False)
 
 
 if __name__ == "__main__":

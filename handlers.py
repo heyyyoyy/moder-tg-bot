@@ -24,7 +24,7 @@ async def new_chat_members_handler(message):
     for member in message.new_chat_members:
         if member.id == BOT_ID:
             # Bot added in the group
-            # Save group in the db 
+            # Save group in the db
             # or check mark that the group is deleted (deleted=False)
             pass
         else:
@@ -32,7 +32,7 @@ async def new_chat_members_handler(message):
             # Use restrictChatMember
             # Send message with button
             # and try delete service message
-            # Save user in the db (group - user) 
+            # Save user in the db (group - user)
             # or check mark that user is deleted (deleted=False)
             pass
 
