@@ -11,6 +11,7 @@ aiogram = "*"
 aioredis = "*"
 peewee-async = "*"
 python-dotenv = "*"
+aiopg = "*"
 
 [requires]
 python_version = "3.7"

@@ -25,3 +25,5 @@ async def get_bot_id():
     return bot_.id
 
 BOT_ID = loop.run_until_complete(get_bot_id())
+
+DB_NAME = os.environ['DB_NAME']
