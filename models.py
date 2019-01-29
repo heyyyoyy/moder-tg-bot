@@ -5,7 +5,11 @@ from datetime import datetime
 from settings import DB_NAME
 
 
-db = peewee_async.PooledPostgresqlDatabase(DB_NAME, max_connections=20)
+db = peewee_async.PooledPostgresqlDatabase(
+    DB_NAME,
+    max_connections=20,
+    autorollback=True)
+
 manager = peewee_async.Manager(db)
 
 
