@@ -2,11 +2,13 @@ import peewee
 import peewee_async
 from datetime import datetime
 
-from settings import DB_NAME
+from settings import DB_NAME, DB_USER, DB_PASSWORD
 
 
 db = peewee_async.PooledPostgresqlDatabase(
     DB_NAME,
+    user=DB_USER,
+    password=DB_PASSWORD,
     max_connections=20,
     autorollback=True)
 
@@ -28,8 +30,8 @@ class User(Base):
 
 class Group(Base):
     id = peewee.BigIntegerField(primary_key=True)
-    name = peewee.CharField()
-    link = peewee.CharField()
+    title = peewee.CharField()
+    link = peewee.CharField(null=True)
     registration = peewee.DateTimeField(default=datetime.now)
     deleted = peewee.BooleanField(default=False)
 
