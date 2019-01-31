@@ -1,6 +1,6 @@
 import peewee
 import peewee_async
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 
 from settings import DB_NAME, DB_USER, DB_PASSWORD
@@ -119,6 +119,20 @@ class UserToGroup(Base):
 
             user_group.deleted = True
             await manager.update(user_group)
+
+    @classmethod
+    async def can_send_sticker(cls, user, group):
+        try:
+            group_user = await manager.get(
+                             cls,
+                             group=group.id,
+                             user=user.id
+                         )
+        except cls.DoesNotExist:
+            await cls.save_user_to_group(user, group)
+            return True
+        else:
+            return group_user.registration < datetime.now() + timedelta(days=7)
 
 
 if __name__ == "__main__":

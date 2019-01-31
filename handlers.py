@@ -4,7 +4,7 @@ import logging
 from settings import bot, dp, BOT_ID, ADMIN
 
 from models import UserToGroup, Group
-from views import check_user, spam
+from views import check_user, spam, search_link
 
 
 @dp.errors_handler()
@@ -128,10 +128,18 @@ async def media_handler(message):
     content_types=[ContentType.STICKER])
 async def handle_stickers(message):
     # if user days > 7 days => can send stickers
-    pass
+    if await UserToGroup.can_send_sticker(message.from_user, message.chat):
+        await bot.delete_message(
+            message.chat.id,
+            message.message_id
+        )
 
 
 @dp.message_handler(lambda msg: msg.chat.type == 'supergroup')
 async def all(message):
     # Check messages in the group (link)
-    pass
+    if await search_link(message.text):
+        await bot.delete_message(
+            message.chat.id,
+            message.message_id
+        )
