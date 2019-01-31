@@ -1,5 +1,5 @@
 from aiogram.types import ContentType
-from aiogram.utils.exceptions import Unauthorized
+from aiogram.utils.exceptions import Unauthorized, MessageCantBeDeleted
 import logging
 
 from settings import bot, dp, BOT_ID, ADMIN
@@ -25,10 +25,13 @@ async def welcome(message):
 @dp.message_handler(content_types=ContentType.NEW_CHAT_MEMBERS)
 async def new_chat_members_handler(message):
     # try delete service message
-    await bot.delete_message(
-        message.chat.id,
-        message.message_id
-    )
+    try:
+        await bot.delete_message(
+            message.chat.id,
+            message.message_id
+        )
+    except MessageCantBeDeleted:
+        pass
     for member in message.new_chat_members:
         if member.id == BOT_ID:
             if message.chat.type == 'group':

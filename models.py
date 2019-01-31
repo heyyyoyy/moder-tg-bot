@@ -47,6 +47,7 @@ class User(Base):
 class Group(Base):
     id = peewee.BigIntegerField(primary_key=True)
     title = peewee.CharField()
+    # TODO delete filed link
     link = peewee.CharField(null=True)
     registration = peewee.DateTimeField(default=datetime.now)
     deleted = peewee.BooleanField(default=False)
