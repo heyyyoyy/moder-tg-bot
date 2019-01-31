@@ -70,10 +70,14 @@ class Group(Base):
     @classmethod
     async def delete_group(cls, group_id):
         async with manager.transaction():
-            group = await manager.get(
-                cls,
-                id=group_id
-                )
+            try:
+                group = await manager.get(
+                    cls,
+                    id=group_id
+                    )
+            except cls.DoesNotExist:
+                return
+
             group.deleted = True
             await manager.update(group)
 
@@ -98,16 +102,21 @@ class UserToGroup(Base):
                     group=group.id)
             else:
                 _group.deleted = False
+                _group.registration = datetime.now()
                 await manager.update(_group)
 
     @classmethod
     async def delete_user_from_group(cls, user_id, group_id):
         async with manager.transaction():
-            user_group = await manager.get(
-                cls,
-                user=user_id,
-                group=group_id
-                )
+            try:
+                user_group = await manager.get(
+                    cls,
+                    user=user_id,
+                    group=group_id
+                    )
+            except cls.DoesNotExist:
+                return
+
             user_group.deleted = True
             await manager.update(user_group)
 
