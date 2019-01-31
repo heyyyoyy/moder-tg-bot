@@ -3,18 +3,19 @@ import peewee_async
 from datetime import datetime, timedelta
 import logging
 
-from settings import DB_NAME, DB_USER, DB_PASSWORD
+from settings import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST
 
 
 db = peewee_async.PooledPostgresqlDatabase(
     DB_NAME,
+    host=DB_HOST,
     user=DB_USER,
     password=DB_PASSWORD,
     max_connections=20,
     autorollback=True)
 
 manager = peewee_async.Manager(db)
-manager.allow_sync = logging.WARNING
+manager.database.allow_sync = logging.WARNING
 
 
 class Base(peewee.Model):
