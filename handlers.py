@@ -1,4 +1,5 @@
 from aiogram.types import ContentType
+from aiogram.utils.exceptions import Unauthorized
 import logging
 
 from settings import bot, dp, BOT_ID, ADMIN
@@ -93,10 +94,14 @@ async def handle_click(call, callback_data):
 @dp.message_handler(content_types=ContentType.LEFT_CHAT_MEMBER)
 async def left_user_handler(message):
     # try delete service message
-    await bot.delete_message(
-        message.chat.id,
-        message.message_id
-    )
+    try:
+        await bot.delete_message(
+            message.chat.id,
+            message.message_id
+        )
+    except Unauthorized:
+        pass
+
     if message.left_chat_member.id == BOT_ID:
         # Bot was removed from the group
         # Mark in the db that the group is deleted
