@@ -1,6 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 import re
 
+from settings import redis
 from callback_factory import spam, admin_menu
 
 
@@ -33,25 +34,35 @@ async def search_link(message):
     return False
 
 
+async def get_settings():
+    pipe = redis.pipeline()
+    pipe.get('join')
+    pipe.get('check_user')
+    pipe.get('left')
+    pipe.get('media')
+    result = await pipe.execute()
+    return (m.decode() for m in result)
+
+
 async def admin_panel():
-    mode = 't'
+    join_mode, check_user_mode, left_mode, media_mode = await get_settings()
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
         *(InlineKeyboardButton(
-            f'{"✅" if mode == "t" else "☑️"} Join',
-            callback_data=admin_menu.new(mode='t', action='join')),
+            f'{"✅" if join_mode == "t" else "☑️"} Join',
+            callback_data=admin_menu.new(mode=join_mode, action='join')),
           InlineKeyboardButton(
-              f'{"✅" if mode == "t" else "☑️"} Check user',
-              callback_data=admin_menu.new(mode='t', action='check')),
+              f'{"✅" if check_user_mode == "t" else "☑️"} Check user',
+              callback_data=admin_menu.new(mode=check_user_mode, action='check_user')),
           InlineKeyboardButton(
-              f'{"✅" if mode == "t" else "☑️"} Left',
-              callback_data=admin_menu.new(mode='t', action='left')),
+              f'{"✅" if left_mode == "t" else "☑️"} Left',
+              callback_data=admin_menu.new(mode=left_mode, action='left')),
           InlineKeyboardButton(
               'Links',
               callback_data=admin_menu.new(mode='t', action='links')),
           InlineKeyboardButton(
-              f'{"✅" if mode == "t" else "☑️"} Media',
-              callback_data=admin_menu.new(mode='t', action='media')),
+              f'{"✅" if media_mode == "t" else "☑️"} Media',
+              callback_data=admin_menu.new(mode=media_mode, action='media')),
           InlineKeyboardButton(
               'Download',
               callback_data=admin_menu.new(mode='t', action='download')))

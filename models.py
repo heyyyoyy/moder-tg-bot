@@ -137,6 +137,13 @@ class UserToGroup(Base):
             return group_user.registration < datetime.now() + timedelta(days=7)
 
 
+class Link(Base):
+    domain = peewee.CharField()
+
+
 if __name__ == "__main__":
     with manager.allow_sync():
-        db.create_tables([User, Group, UserToGroup])
+        User.create_table(True)
+        Group.create_table(True)
+        UserToGroup.create_table(True)
+        Link.create_table(True)

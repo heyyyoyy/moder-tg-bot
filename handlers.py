@@ -2,11 +2,11 @@ from aiogram.types import ContentType
 from aiogram.utils.exceptions import Unauthorized, MessageCantBeDeleted
 import logging
 
-from settings import bot, dp, BOT_ID, ADMIN
+from settings import bot, dp, BOT_ID, ADMIN, redis
 
 from models import UserToGroup, Group
 from views import check_user, search_link, admin_panel
-from callback_factory import spam
+from callback_factory import spam, admin_menu
 from filters import AdminFilter
 
 
@@ -30,16 +30,36 @@ async def welcome(message):
     )
 
 
+@dp.callback_query_handler(
+    admin_menu.filter(action=['join', 'check_user', 'left', 'media']),
+    is_admin=True)
+async def switch_result_handler(call, callback_data):
+    mode, action = callback_data['mode'], callback_data['action']
+    if mode == 't':
+        mode = 'f'
+    else:
+        mode = 't'
+    await redis.set(action, mode)
+    text, kb = await admin_panel()
+    await bot.edit_message_text(
+        text,
+        call.from_user.id,
+        call.message.message_id,
+        reply_markup=kb
+    )
+
+
 @dp.message_handler(content_types=ContentType.NEW_CHAT_MEMBERS)
 async def new_chat_members_handler(message):
-    # try delete service message
-    try:
-        await bot.delete_message(
-            message.chat.id,
-            message.message_id
-        )
-    except MessageCantBeDeleted:
-        pass
+    join = await redis.get('join')
+    if join.decode() == 't':
+        try:
+            await bot.delete_message(
+                message.chat.id,
+                message.message_id
+            )
+        except MessageCantBeDeleted:
+            pass
     for member in message.new_chat_members:
         if member.id == BOT_ID:
             if message.chat.type == 'group':
@@ -66,20 +86,22 @@ async def new_chat_members_handler(message):
                 member,
                 message.chat
             )
-            # Use restrictChatMember
-            await bot.restrict_chat_member(
-                message.chat.id,
-                member.id,
-                until_date=0,
-                can_send_messages=False,
+            check = await redis.get('check_user')
+            if check.decode() == 't':
+                # Use restrictChatMember
+                await bot.restrict_chat_member(
+                    message.chat.id,
+                    member.id,
+                    until_date=0,
+                    can_send_messages=False,
+                    )
+                text, kb = await check_user(member)
+                # Send message with button
+                await bot.send_message(
+                    message.chat.id,
+                    text,
+                    reply_markup=kb
                 )
-            text, kb = await check_user(member)
-            # Send message with button
-            await bot.send_message(
-                message.chat.id,
-                text,
-                reply_markup=kb
-            )
 
 
 @dp.callback_query_handler(spam.filter(action='filter'))
@@ -104,14 +126,16 @@ async def handle_click(call, callback_data):
 
 @dp.message_handler(content_types=ContentType.LEFT_CHAT_MEMBER)
 async def left_user_handler(message):
-    # try delete service message
-    try:
-        await bot.delete_message(
-            message.chat.id,
-            message.message_id
-        )
-    except Unauthorized:
-        pass
+    left = await redis.get('left')
+    if left.decode() == 't':
+        # try delete service message
+        try:
+            await bot.delete_message(
+                message.chat.id,
+                message.message_id
+            )
+        except Unauthorized:
+            pass
 
     if message.left_chat_member.id == BOT_ID:
         # Bot was removed from the group
@@ -132,11 +156,13 @@ async def left_user_handler(message):
                    ContentType.VIDEO_NOTE, ContentType.VOICE,
                    ContentType.PHOTO, ContentType.DOCUMENT])
 async def media_handler(message):
-    # if media off - delete message
-    await bot.delete_message(
-        message.chat.id,
-        message.message_id
-    )
+    media = await redis.get('media')
+    if media.decode() == 't':
+        # if media off - delete message
+        await bot.delete_message(
+            message.chat.id,
+            message.message_id
+        )
 
 
 @dp.message_handler(

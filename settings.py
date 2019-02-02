@@ -1,4 +1,5 @@
 import os
+import aioredis
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.types import ParseMode
@@ -31,3 +32,32 @@ DB_HOST = os.getenv('DB_HOST')
 DB_NAME = os.environ['DB_NAME']
 DB_USER = os.environ['DB_USER']
 DB_PASSWORD = os.environ['DB_PASSWORD']
+
+
+async def init_redis_pool():
+    pool = await aioredis.create_redis_pool(
+        os.environ['REDIS']
+    )
+    pipe = pool.pipeline()
+    pipe.get('join')
+    pipe.get('check_user')
+    pipe.get('left')
+    pipe.get('media')
+    result = await pipe.execute()
+    if any(result):
+        join, check_user, left, media = result
+        pipe = pool.pipeline()
+        if join is None:
+            pipe.set('join', 't')
+        if check_user is None:
+            pipe.set('check_user', 't')
+        if left is None:
+            pipe.set('left', 't')
+        if media is None:
+            pipe.set('media', 't')
+
+        await pipe.execute()
+    return pool
+
+
+redis = loop.run_until_complete(init_redis_pool())
