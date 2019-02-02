@@ -6,9 +6,9 @@ from aiogram.types import (
     ReplyKeyboardRemove)
 import re
 
-from settings import redis
-from callback_factory import spam, admin_menu, group_cb
-from models import Link, Group, manager
+from .settings import redis
+from .callback_factory import spam, admin_menu, group_cb
+from .models import Link, Group, manager
 
 
 PATTERN_URL = re.compile(r'(https?:\/\/)?(\w+\.)?([-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b)([-a-zA-Z0-9@:%_\+.~#?&//=]*)')

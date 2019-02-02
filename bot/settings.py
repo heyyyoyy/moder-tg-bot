@@ -44,20 +44,26 @@ async def init_redis_pool():
     pipe.get('left')
     pipe.get('media')
     result = await pipe.execute()
-    if any(result):
-        join, check_user, left, media = result
-        pipe = pool.pipeline()
-        if join is None:
-            pipe.set('join', 't')
-        if check_user is None:
-            pipe.set('check_user', 't')
-        if left is None:
-            pipe.set('left', 't')
-        if media is None:
-            pipe.set('media', 't')
+    join, check_user, left, media = result
+    pipe = pool.pipeline()
+    if join is None:
+        pipe.set('join', 't')
+    if check_user is None:
+        pipe.set('check_user', 't')
+    if left is None:
+        pipe.set('left', 't')
+    if media is None:
+        pipe.set('media', 't')
 
         await pipe.execute()
     return pool
 
 
 redis = loop.run_until_complete(init_redis_pool())
+
+
+WEBHOOK_HOST = os.environ['WEBHOOK_HOST']
+WEBHOOK_PATH = os.environ['WEBHOOK_PATH']
+
+WEBAPP_HOST = os.environ['WEBAPP_HOST']
+WEBAPP_PORT = os.environ['WEBAPP_PORT']

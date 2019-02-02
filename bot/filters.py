@@ -1,6 +1,6 @@
 from aiogram.dispatcher.filters import BoundFilter
 
-from settings import ADMIN
+from .settings import ADMIN
 
 
 class AdminFilter(BoundFilter):

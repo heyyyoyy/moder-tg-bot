@@ -2,15 +2,15 @@ from aiogram.types import ContentType, ReplyKeyboardRemove
 from aiogram.utils.exceptions import Unauthorized, MessageCantBeDeleted
 import logging
 
-from settings import bot, dp, BOT_ID, ADMIN, redis
+from .settings import bot, dp, BOT_ID, ADMIN, redis
 
-from state import add_link
-from models import UserToGroup, Group
-from views import (
+from .state import add_link
+from .models import UserToGroup, Group
+from .views import (
     check_user, search_link, admin_panel,
     get_link_menu, save_link, create_grouplist)
-from callback_factory import spam, admin_menu, group_cb
-from filters import AdminFilter
+from .callback_factory import spam, admin_menu, group_cb
+from .filters import AdminFilter
 
 
 dp.filters_factory.bind(AdminFilter)

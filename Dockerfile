@@ -7,7 +7,8 @@ WORKDIR /opt/bot/
 
 RUN pipenv install --system --deploy
 
-COPY .env handlers.py models.py polling.py settings.py views.py /opt/bot/
-WORKDIR /opt/bot/
+COPY .env bot/ conf.d/webhook_cert.pem /opt/bot/
+WORKDIR /opt
 
-CMD ["python", "polling.py"]
+EXPOSE 8888
+CMD ["python", "-m", "bot.server"]

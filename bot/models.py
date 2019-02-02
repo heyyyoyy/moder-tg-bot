@@ -5,7 +5,7 @@ import logging
 import csv
 import io
 
-from settings import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST
+from .settings import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST
 
 
 db = peewee_async.PooledPostgresqlDatabase(

@@ -17,3 +17,15 @@ services:
     image: redis
     volumes:
       - ${HOME}/redis:/data
+  nginx:
+    image: "nginx"
+    ports:
+      - "443:443"
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d
+    environment:
+      - SERVER_IP=${WEBHOOK_HOST}
+    depends_on:
+      - postgres
+      - redis
+      - bot
