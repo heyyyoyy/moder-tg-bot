@@ -5,7 +5,12 @@ import logging
 from settings import bot, dp, BOT_ID, ADMIN
 
 from models import UserToGroup, Group
-from views import check_user, spam, search_link
+from views import check_user, search_link, admin_panel
+from callback_factory import spam
+from filters import AdminFilter
+
+
+dp.filters_factory.bind(AdminFilter)
 
 
 @dp.errors_handler()
@@ -14,11 +19,14 @@ async def error(update, error):
     return True
 
 
-@dp.message_handler(commands='start')
+# Admin menu
+@dp.message_handler(commands='start', is_admin=True)
 async def welcome(message):
+    text, kb = await admin_panel()
     await bot.send_message(
         message.from_user.id,
-        'hello'
+        text,
+        reply_markup=kb
     )
 
 
