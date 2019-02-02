@@ -1,8 +1,14 @@
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+    ReplyKeyboardRemove)
 import re
 
 from settings import redis
 from callback_factory import spam, admin_menu
+from models import Link, manager
 
 
 PATTERN_URL = re.compile(r'(https?:\/\/)?(\w+\.)?([-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b)([-a-zA-Z0-9@:%_\+.~#?&//=]*)')
@@ -30,7 +36,9 @@ async def search_link(message):
     if result is not None:
         domain = result.groups()[2]
         # if domain not in link list => return true
-        return True
+        links = await manager.execute(Link.select().where(Link.url == domain))
+        if not links:
+            return True
     return False
 
 
@@ -71,3 +79,25 @@ async def admin_panel():
         'Добро пожаловать в управление ботом! Выберите интересующий вас пункт',
         markup
     )
+
+
+async def get_link_menu():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton('Отмена'))
+    return (
+        'Введите название сайта, например '
+        '<code>vk.com</code> и я буду удалять '
+        'все ссылки связанные с ним. Если хотите '
+        'выйти нажмите Отмена',
+        markup
+    )
+
+
+async def save_link(link):
+    url = re.search(PATTERN_URL, link)
+    if url is not None:
+        domain = url.groups()[2]
+        await manager.get_or_create(Link, url=domain)
+        return ('Ссылка добавлена', True, ReplyKeyboardRemove()), await admin_panel()
+
+    return ('Вы ввели неправильную ссылку', False, None), None

@@ -1,11 +1,12 @@
-from aiogram.types import ContentType
+from aiogram.types import ContentType, ReplyKeyboardRemove
 from aiogram.utils.exceptions import Unauthorized, MessageCantBeDeleted
 import logging
 
 from settings import bot, dp, BOT_ID, ADMIN, redis
 
+from state import add_link
 from models import UserToGroup, Group
-from views import check_user, search_link, admin_panel
+from views import check_user, search_link, admin_panel, get_link_menu, save_link
 from callback_factory import spam, admin_menu
 from filters import AdminFilter
 
@@ -21,7 +22,15 @@ async def error(update, error):
 
 # Admin menu
 @dp.message_handler(commands='start', is_admin=True)
-async def welcome(message):
+@dp.message_handler(text='Отмена', state='*', is_admin=True)
+async def welcome(message, state):
+    await state.finish()
+    if message.text == 'Отмена':
+        await bot.send_message(
+            message.from_user.id,
+            'Отменено',
+            reply_markup=ReplyKeyboardRemove()
+        )
     text, kb = await admin_panel()
     await bot.send_message(
         message.from_user.id,
@@ -47,6 +56,39 @@ async def switch_result_handler(call, callback_data):
         call.message.message_id,
         reply_markup=kb
     )
+
+
+@dp.callback_query_handler(admin_menu.filter(action='links'), is_admin=True)
+async def link_add_menu(call):
+    await add_link.set()
+    text, kb = await get_link_menu()
+    await bot.delete_message(
+        call.from_user.id,
+        call.message.message_id
+    )
+    await bot.send_message(
+        call.from_user.id,
+        text,
+        reply_markup=kb
+    )
+
+
+@dp.message_handler(state=add_link, is_admin=True)
+async def handle_link(message, state):
+    first, second = await save_link(message.text)
+    if first[1]:
+        await state.finish()
+    await bot.send_message(
+        message.from_user.id,
+        first[0],
+        reply_markup=first[2]
+    )
+    if second:
+        await bot.send_message(
+            message.from_user.id,
+            second[0],
+            reply_markup=second[1]
+        )
 
 
 @dp.message_handler(content_types=ContentType.NEW_CHAT_MEMBERS)

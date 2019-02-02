@@ -138,7 +138,7 @@ class UserToGroup(Base):
 
 
 class Link(Base):
-    domain = peewee.CharField()
+    url = peewee.CharField(primary_key=True)
 
 
 if __name__ == "__main__":
