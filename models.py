@@ -2,6 +2,8 @@ import peewee
 import peewee_async
 from datetime import datetime, timedelta
 import logging
+import csv
+import io
 
 from settings import DB_NAME, DB_USER, DB_PASSWORD, DB_HOST
 
@@ -82,6 +84,26 @@ class Group(Base):
 
             group.deleted = True
             await manager.update(group)
+
+    @classmethod
+    async def download_data(cls, cid):
+        group_data = await manager.execute(
+            cls.select(
+                User.id, User.name, User.username,
+                UserToGroup.registration, UserToGroup.deleted
+                ).join(UserToGroup).join(User).where(
+                UserToGroup.group == cid
+            ).dicts()
+        )
+
+        with io.StringIO() as f:
+            writer = csv.DictWriter(f, fieldnames=[
+                'id', 'name', 'username',
+                'registration', 'deleted'])
+            writer.writeheader()
+            writer.writerows(group_data)
+            f.seek(0)
+            return f.getvalue().encode()
 
 
 class UserToGroup(Base):

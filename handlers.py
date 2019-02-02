@@ -6,8 +6,10 @@ from settings import bot, dp, BOT_ID, ADMIN, redis
 
 from state import add_link
 from models import UserToGroup, Group
-from views import check_user, search_link, admin_panel, get_link_menu, save_link
-from callback_factory import spam, admin_menu
+from views import (
+    check_user, search_link, admin_panel,
+    get_link_menu, save_link, create_grouplist)
+from callback_factory import spam, admin_menu, group_cb
 from filters import AdminFilter
 
 
@@ -91,6 +93,37 @@ async def handle_link(message, state):
         )
 
 
+@dp.callback_query_handler(admin_menu.filter(action='download'), is_admin=True)
+async def handle_download(call):
+    text, kb = await create_grouplist()
+    await bot.answer_callback_query(call.id)
+    await bot.send_message(
+        call.from_user.id,
+        text,
+        reply_markup=kb
+    )
+
+
+@dp.callback_query_handler(
+    group_cb.filter(action='load'), is_admin=True, run_task=True)
+async def download_handler(call, callback_data):
+    cid = int(callback_data['id'])
+    await bot.answer_callback_query(
+        call.id,
+        text='Генерирую документ'
+    )
+    await bot.delete_message(
+        call.from_user.id,
+        call.message.message_id
+    )
+
+    file = await Group.download_data(cid)
+    await bot.send_document(
+        call.from_user.id,
+        ('group.csv', file)
+    )
+
+
 @dp.message_handler(content_types=ContentType.NEW_CHAT_MEMBERS)
 async def new_chat_members_handler(message):
     join = await redis.get('join')
@@ -106,16 +139,16 @@ async def new_chat_members_handler(message):
         if member.id == BOT_ID:
             if message.chat.type == 'group':
                 await bot.leave_chat(message.chat.id)
-                await bot.send_message(
-                            message.from_user.id,
-                            'Чтобы я мог давать ограничения, '
-                            'преобразуй группу в супергруппу и '
-                            'добавь меня снова'
-                        )
             # Bot added in the group
-            # if it is not added by admin, use leave_chat
+            # if it is not added by admin, send_notify
             elif ADMIN != message.from_user.id:
-                await bot.leave_chat(message.chat.id)
+                await bot.send_message(
+                    ADMIN,
+                    f'Вашего бота добавил '
+                    f'<a href="tg://user?id={message.from_user.id}">'
+                    f'{message.from_user.first_name}</a> в группу '
+                    f'{message.chat.title}'
+                )
             else:
                 # Save group in the db
                 # or check mark that the group is deleted (deleted=False)

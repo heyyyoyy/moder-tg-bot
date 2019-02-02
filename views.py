@@ -7,8 +7,8 @@ from aiogram.types import (
 import re
 
 from settings import redis
-from callback_factory import spam, admin_menu
-from models import Link, manager
+from callback_factory import spam, admin_menu, group_cb
+from models import Link, Group, manager
 
 
 PATTERN_URL = re.compile(r'(https?:\/\/)?(\w+\.)?([-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b)([-a-zA-Z0-9@:%_\+.~#?&//=]*)')
@@ -101,3 +101,20 @@ async def save_link(link):
         return ('Ссылка добавлена', True, ReplyKeyboardRemove()), await admin_panel()
 
     return ('Вы ввели неправильную ссылку', False, None), None
+
+
+async def create_grouplist():
+    groups = await manager.execute(Group.select())
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        *(
+            InlineKeyboardButton(
+                group.title,
+                callback_data=group_cb.new(id=str(group.id), action='load'))
+            for group in groups
+        )
+    )
+    return (
+        'Выберите группу из которой хотите скачать базу',
+        markup
+    )
