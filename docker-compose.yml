@@ -1,10 +1,11 @@
 version: '3'
 services:
   bot:
-   build: .
-   depends_on:
-    - postgres
-    - redis
+    build: .
+    depends_on:
+      - postgres
+      - redis
+    restart: always
   postgres:
     image: postgres
     environment:
@@ -13,10 +14,12 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - ${HOME}/pgdata:/var/lib/postgresql/data
+    restart: always
   redis:
     image: redis
     volumes:
       - ${HOME}/redis:/data
+    restart: always
   nginx:
     image: "nginx"
     ports:
@@ -29,3 +32,4 @@ services:
       - postgres
       - redis
       - bot
+    restart: always

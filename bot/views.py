@@ -31,6 +31,31 @@ async def check_user(member):
     )
 
 
+async def check_admin(bot, message):
+    admins = await redis.lrange(
+        message.chat.id, 0, await redis.llen(message.chat.id))
+    if not admins:
+        chat_members = await bot.get_chat_administrators(
+            message.chat.id
+        )
+        chat_members = [member.user.id for member in chat_members]
+        for member in chat_members:
+            await redis.lpush(
+                message.chat.id,
+                member
+            )
+        await redis.expire(
+            message.chat.id,
+            60*60
+        )
+        if message.from_user.id in chat_members:
+            return True
+
+    admins = map(int, admins)
+    if message.from_user.id in admins:
+        return True
+
+
 async def search_link(message):
     result = re.search(PATTERN_URL, message)
     if result is not None:
@@ -57,22 +82,22 @@ async def admin_panel():
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
         *(InlineKeyboardButton(
-            f'{"✅" if join_mode == "t" else "☑️"} Join',
+            f'{"✅" if join_mode == "t" else "☑️"} Присоединился',
             callback_data=admin_menu.new(mode=join_mode, action='join')),
           InlineKeyboardButton(
-              f'{"✅" if check_user_mode == "t" else "☑️"} Check user',
+              f'{"✅" if check_user_mode == "t" else "☑️"} Проверка пользователя',
               callback_data=admin_menu.new(mode=check_user_mode, action='check_user')),
           InlineKeyboardButton(
-              f'{"✅" if left_mode == "t" else "☑️"} Left',
+              f'{"✅" if left_mode == "t" else "☑️"} Покинул',
               callback_data=admin_menu.new(mode=left_mode, action='left')),
           InlineKeyboardButton(
-              'Links',
+              'Ссылки',
               callback_data=admin_menu.new(mode='t', action='links')),
           InlineKeyboardButton(
-              f'{"✅" if media_mode == "t" else "☑️"} Media',
+              f'{"✅" if media_mode == "t" else "☑️"} Вложения',
               callback_data=admin_menu.new(mode=media_mode, action='media')),
           InlineKeyboardButton(
-              'Download',
+              'Скачать',
               callback_data=admin_menu.new(mode='t', action='download')))
     )
     return (
@@ -86,7 +111,7 @@ async def get_link_menu():
     markup.add(KeyboardButton('Отмена'))
     return (
         'Введите название сайта, например '
-        '<code>vk.com</code> и я буду удалять '
+        '<code>vk.com</code> и я не буду удалять '
         'все ссылки связанные с ним. Если хотите '
         'выйти нажмите Отмена',
         markup

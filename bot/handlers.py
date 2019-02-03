@@ -8,7 +8,8 @@ from .state import add_link
 from .models import UserToGroup, Group
 from .views import (
     check_user, search_link, admin_panel,
-    get_link_menu, save_link, create_grouplist)
+    get_link_menu, save_link, create_grouplist,
+    check_admin)
 from .callback_factory import spam, admin_menu, group_cb
 from .filters import AdminFilter
 
@@ -234,10 +235,12 @@ async def media_handler(message):
     media = await redis.get('media')
     if media.decode() == 't':
         # if media off - delete message
-        await bot.delete_message(
-            message.chat.id,
-            message.message_id
-        )
+        # if user != admin
+        if not await check_admin(bot, message):
+            await bot.delete_message(
+                message.chat.id,
+                message.message_id
+            )
 
 
 @dp.message_handler(
@@ -245,18 +248,22 @@ async def media_handler(message):
     content_types=[ContentType.STICKER])
 async def handle_stickers(message):
     # if user days > 7 days => can send stickers
-    if await UserToGroup.can_send_sticker(message.from_user, message.chat):
-        await bot.delete_message(
-            message.chat.id,
-            message.message_id
-        )
+    # if user != admin
+    if not await check_admin(bot, message):
+        if await UserToGroup.can_send_sticker(message.from_user, message.chat):
+            await bot.delete_message(
+                message.chat.id,
+                message.message_id
+            )
 
 
 @dp.message_handler(lambda msg: msg.chat.type == 'supergroup')
 async def all(message):
     # Check messages in the group (link)
-    if await search_link(message.text):
-        await bot.delete_message(
-            message.chat.id,
-            message.message_id
-        )
+    # if user != admin
+    if not await check_admin(bot, message):
+        if await search_link(message.text):
+            await bot.delete_message(
+                message.chat.id,
+                message.message_id
+            )
