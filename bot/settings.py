@@ -36,7 +36,10 @@ DB_PASSWORD = os.environ['DB_PASSWORD']
 
 async def init_redis_pool():
     pool = await aioredis.create_redis_pool(
-        os.environ['REDIS']
+        os.environ['REDIS'],
+        minsize=int(os.environ['REDIS_MIN_CON']),
+        maxsize=int(os.environ['REDIS_MAX_CON'])
+
     )
     pipe = pool.pipeline()
     pipe.get('join')
