@@ -130,6 +130,19 @@ class UserToGroup(Base):
                 await manager.update(_group)
 
     @classmethod
+    async def save_new_user(cls, user, group):
+        async with manager.transaction():
+            await User.save_user(user)
+            await Group.save_group(group)
+            try:
+                await manager.get(cls, user=user.id, group=group.id)
+            except cls.DoesNotExist:
+                await manager.create(
+                    cls,
+                    user=user.id,
+                    group=group.id)
+
+    @classmethod
     async def delete_user_from_group(cls, user_id, group_id):
         async with manager.transaction():
             try:

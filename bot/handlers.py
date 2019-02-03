@@ -261,6 +261,9 @@ async def handle_stickers(message):
 async def all(message):
     # Check messages in the group (link)
     # if user != admin
+    await UserToGroup.save_new_user(
+        message.from_user, message.chat
+        )
     if not await check_admin(bot, message):
         if await search_link(message.text):
             await bot.delete_message(
