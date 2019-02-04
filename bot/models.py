@@ -173,6 +173,7 @@ class UserToGroup(Base):
 
 
 class Link(Base):
+    group = peewee.ForeignKeyField(Group, related_name='link_group', on_delete='CASCADE')
     url = peewee.CharField(primary_key=True)
 
 

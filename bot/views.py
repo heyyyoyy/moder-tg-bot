@@ -7,7 +7,7 @@ from aiogram.types import (
 import re
 
 from .settings import redis
-from .callback_factory import spam, admin_menu, group_cb
+from .callback_factory import spam, admin_menu, group_cb, back
 from .models import Link, Group, manager
 
 
@@ -56,52 +56,96 @@ async def check_admin(bot, message):
         return True
 
 
-async def search_link(message):
+async def search_link(message, group_id):
     result = re.search(PATTERN_URL, message)
     if result is not None:
         domain = result.groups()[2]
         # if domain not in link list => return true
-        links = await manager.execute(Link.select().where(Link.url == domain))
+        links = await manager.execute(Link.select().where(
+            (Link.group == group_id) & (Link.url == domain)))
         if not links:
             return True
     return False
 
 
-async def get_settings():
+async def get_settings(group_id):
     pipe = redis.pipeline()
-    pipe.get('join')
-    pipe.get('check_user')
-    pipe.get('left')
-    pipe.get('media')
+    pipe.get(f'{group_id}:join')
+    pipe.get(f'{group_id}:check_user')
+    pipe.get(f'{group_id}:left')
+    pipe.get(f'{group_id}:media')
     result = await pipe.execute()
     return (m.decode() for m in result)
 
 
-async def admin_panel():
-    join_mode, check_user_mode, left_mode, media_mode = await get_settings()
+async def save_settings(group_id):
+    pipe = redis.pipeline()
+    pipe.set(f'{group_id}:join', 't')
+    pipe.set(f'{group_id}:check_user', 't')
+    pipe.set(f'{group_id}:left', 't')
+    pipe.set(f'{group_id}:media', 't')
+    await pipe.execute()
+
+
+async def main_menu():
+    groups = await manager.execute(
+        Group.select().where(~Group.deleted)
+    )
+    markup = InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        *(
+            InlineKeyboardButton(
+                group.title,
+                callback_data=group_cb.new(
+                    id=str(group.id), action='main'
+                )
+            )
+            for group in groups
+        )
+    )
+    return (
+        'Добро пожаловать в управление ботом! '
+        'Выберите интересующую вас группу',
+        markup
+    )
+
+
+async def admin_panel(group_id):
+    join_mode, check_user_mode, left_mode, media_mode = await get_settings(group_id)
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
         *(InlineKeyboardButton(
             f'{"✅" if join_mode == "t" else "☑️"} Присоединился',
-            callback_data=admin_menu.new(mode=join_mode, action='join')),
+            callback_data=admin_menu.new(
+                id=group_id, mode=join_mode, action='join')),
           InlineKeyboardButton(
               f'{"✅" if check_user_mode == "t" else "☑️"} Проверка пользователя',
-              callback_data=admin_menu.new(mode=check_user_mode, action='check_user')),
+              callback_data=admin_menu.new(
+                  id=group_id, mode=check_user_mode, action='check_user')),
           InlineKeyboardButton(
               f'{"✅" if left_mode == "t" else "☑️"} Покинул',
-              callback_data=admin_menu.new(mode=left_mode, action='left')),
+              callback_data=admin_menu.new(
+                  id=group_id, mode=left_mode, action='left')),
           InlineKeyboardButton(
               'Ссылки',
-              callback_data=admin_menu.new(mode='t', action='links')),
+              callback_data=admin_menu.new(
+                  id=group_id, mode='t', action='links')),
           InlineKeyboardButton(
               f'{"✅" if media_mode == "t" else "☑️"} Вложения',
-              callback_data=admin_menu.new(mode=media_mode, action='media')),
+              callback_data=admin_menu.new(
+                  id=group_id, mode=media_mode, action='media')),
           InlineKeyboardButton(
               'Скачать',
-              callback_data=admin_menu.new(mode='t', action='download')))
+              callback_data=admin_menu.new(
+                  id=group_id, mode='t', action='download')))
+    )
+    markup.add(
+        InlineKeyboardButton(
+            'Назад', callback_data=back.new(action='back')
+            )
     )
     return (
-        'Добро пожаловать в управление ботом! Выберите интересующий вас пункт',
+        'Выберите интересующий вас пункт',
         markup
     )
 
@@ -118,12 +162,12 @@ async def get_link_menu():
     )
 
 
-async def save_link(link):
+async def save_link(link, group_id):
     url = re.search(PATTERN_URL, link)
     if url is not None:
         domain = url.groups()[2]
-        await manager.get_or_create(Link, url=domain)
-        return ('Ссылка добавлена', True, ReplyKeyboardRemove()), await admin_panel()
+        await manager.get_or_create(Link, group=group_id, url=domain)
+        return ('Ссылка добавлена', True, ReplyKeyboardRemove()), await admin_panel(group_id)
 
     return ('Вы ввели неправильную ссылку', False, None), None
 

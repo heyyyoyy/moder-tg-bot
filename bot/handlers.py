@@ -9,8 +9,8 @@ from .models import UserToGroup, Group
 from .views import (
     check_user, search_link, admin_panel,
     get_link_menu, save_link, create_grouplist,
-    check_admin)
-from .callback_factory import spam, admin_menu, group_cb
+    check_admin, main_menu, save_settings)
+from .callback_factory import spam, admin_menu, group_cb, back
 from .filters import AdminFilter
 
 
@@ -24,7 +24,7 @@ async def error(update, error):
 
 
 # Admin menu
-@dp.message_handler(commands='start', is_admin=True)
+@dp.message_handler(commands='start', state='*', is_admin=True)
 @dp.message_handler(text='Отмена', state='*', is_admin=True)
 async def welcome(message, state):
     await state.finish()
@@ -34,10 +34,33 @@ async def welcome(message, state):
             'Отменено',
             reply_markup=ReplyKeyboardRemove()
         )
-    text, kb = await admin_panel()
+    text, kb = await main_menu()
     await bot.send_message(
         message.from_user.id,
         text,
+        reply_markup=kb
+    )
+
+
+@dp.callback_query_handler(group_cb.filter(action='main'), is_admin=True)
+async def handle_main_menu_call(call, callback_data):
+    text, kb = await admin_panel(callback_data['id'])
+    await bot.edit_message_text(
+        text,
+        call.from_user.id,
+        call.message.message_id,
+        reply_markup=kb
+    )
+
+
+@dp.callback_query_handler(back.filter(action='back'), is_admin=True)
+async def back_to_main_menu(call, state):
+    await state.finish()
+    text, kb = await main_menu()
+    await bot.edit_message_text(
+        text,
+        call.from_user.id,
+        call.message.message_id,
         reply_markup=kb
     )
 
@@ -46,13 +69,13 @@ async def welcome(message, state):
     admin_menu.filter(action=['join', 'check_user', 'left', 'media']),
     is_admin=True)
 async def switch_result_handler(call, callback_data):
-    mode, action = callback_data['mode'], callback_data['action']
+    mode, action, group_id = callback_data['mode'], callback_data['action'], callback_data['id']
     if mode == 't':
         mode = 'f'
     else:
         mode = 't'
-    await redis.set(action, mode)
-    text, kb = await admin_panel()
+    await redis.set(f'{group_id}:{action}', mode)
+    text, kb = await admin_panel(group_id)
     await bot.edit_message_text(
         text,
         call.from_user.id,
@@ -62,8 +85,9 @@ async def switch_result_handler(call, callback_data):
 
 
 @dp.callback_query_handler(admin_menu.filter(action='links'), is_admin=True)
-async def link_add_menu(call):
+async def link_add_menu(call, state, callback_data):
     await add_link.set()
+    await state.update_data(id=callback_data['id'])
     text, kb = await get_link_menu()
     await bot.delete_message(
         call.from_user.id,
@@ -78,7 +102,8 @@ async def link_add_menu(call):
 
 @dp.message_handler(state=add_link, is_admin=True)
 async def handle_link(message, state):
-    first, second = await save_link(message.text)
+    data = await state.get_data()
+    first, second = await save_link(message.text, data['id'])
     if first[1]:
         await state.finish()
     await bot.send_message(
@@ -94,28 +119,22 @@ async def handle_link(message, state):
         )
 
 
-@dp.callback_query_handler(admin_menu.filter(action='download'), is_admin=True)
-async def handle_download(call):
-    text, kb = await create_grouplist()
-    await bot.answer_callback_query(call.id)
-    await bot.send_message(
-        call.from_user.id,
-        text,
-        reply_markup=kb
-    )
-
-
 @dp.callback_query_handler(
-    group_cb.filter(action='load'), is_admin=True, run_task=True)
-async def download_handler(call, callback_data):
+    admin_menu.filter(action='download'),
+    is_admin=True,
+    run_task=True)
+async def handle_download(call, callback_data):
     cid = int(callback_data['id'])
+    # text, kb = await create_grouplist()
+    # await bot.answer_callback_query(call.id)
+    # await bot.send_message(
+    #     call.from_user.id,
+    #     text,
+    #     reply_markup=kb
+    # )
     await bot.answer_callback_query(
         call.id,
         text='Генерирую документ'
-    )
-    await bot.delete_message(
-        call.from_user.id,
-        call.message.message_id
     )
 
     file = await Group.download_data(cid)
@@ -125,10 +144,30 @@ async def download_handler(call, callback_data):
     )
 
 
+# @dp.callback_query_handler(
+#     group_cb.filter(action='load'), is_admin=True, run_task=True)
+# async def download_handler(call, callback_data):
+#     cid = int(callback_data['id'])
+#     await bot.answer_callback_query(
+#         call.id,
+#         text='Генерирую документ'
+#     )
+#     await bot.delete_message(
+#         call.from_user.id,
+#         call.message.message_id
+#     )
+
+#     file = await Group.download_data(cid)
+#     await bot.send_document(
+#         call.from_user.id,
+#         ('group.csv', file)
+#     )
+
+
 @dp.message_handler(content_types=ContentType.NEW_CHAT_MEMBERS)
 async def new_chat_members_handler(message):
-    join = await redis.get('join')
-    if join.decode() == 't':
+    join = await redis.get(f'{message.chat.id}:join')
+    if join is not None and join.decode() == 't':
         try:
             await bot.delete_message(
                 message.chat.id,
@@ -138,6 +177,7 @@ async def new_chat_members_handler(message):
             pass
     for member in message.new_chat_members:
         if member.id == BOT_ID:
+            await save_settings(message.chat.id)
             if message.chat.type == 'group':
                 await bot.leave_chat(message.chat.id)
             # Bot added in the group
@@ -150,6 +190,7 @@ async def new_chat_members_handler(message):
                     f'{message.from_user.first_name}</a> в группу '
                     f'{message.chat.title}'
                 )
+                await Group.save_group(message.chat, readded=True)
             else:
                 # Save group in the db
                 # or check mark that the group is deleted (deleted=False)
@@ -162,8 +203,8 @@ async def new_chat_members_handler(message):
                 member,
                 message.chat
             )
-            check = await redis.get('check_user')
-            if check.decode() == 't':
+            check = await redis.get(f'{message.chat.id}:check_user')
+            if check is not None and check.decode() == 't':
                 # Use restrictChatMember
                 await bot.restrict_chat_member(
                     message.chat.id,
@@ -202,8 +243,8 @@ async def handle_click(call, callback_data):
 
 @dp.message_handler(content_types=ContentType.LEFT_CHAT_MEMBER)
 async def left_user_handler(message):
-    left = await redis.get('left')
-    if left.decode() == 't':
+    left = await redis.get(f'{message.chat.id}:left')
+    if left is not None and left.decode() == 't':
         # try delete service message
         try:
             await bot.delete_message(
@@ -232,8 +273,8 @@ async def left_user_handler(message):
                    ContentType.VIDEO_NOTE, ContentType.VOICE,
                    ContentType.PHOTO, ContentType.DOCUMENT])
 async def media_handler(message):
-    media = await redis.get('media')
-    if media.decode() == 't':
+    media = await redis.get(f'{message.chat.id}:media')
+    if media is not None and media.decode() == 't':
         # if media off - delete message
         # if user != admin
         if not await check_admin(bot, message):
@@ -265,7 +306,7 @@ async def all(message):
         message.from_user, message.chat
         )
     if not await check_admin(bot, message):
-        if await search_link(message.text):
+        if await search_link(message.text, message.chat.id):
             await bot.delete_message(
                 message.chat.id,
                 message.message_id
