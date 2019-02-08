@@ -144,26 +144,6 @@ async def handle_download(call, callback_data):
     )
 
 
-# @dp.callback_query_handler(
-#     group_cb.filter(action='load'), is_admin=True, run_task=True)
-# async def download_handler(call, callback_data):
-#     cid = int(callback_data['id'])
-#     await bot.answer_callback_query(
-#         call.id,
-#         text='Генерирую документ'
-#     )
-#     await bot.delete_message(
-#         call.from_user.id,
-#         call.message.message_id
-#     )
-
-#     file = await Group.download_data(cid)
-#     await bot.send_document(
-#         call.from_user.id,
-#         ('group.csv', file)
-#     )
-
-
 @dp.message_handler(content_types=ContentType.NEW_CHAT_MEMBERS)
 async def new_chat_members_handler(message):
     join = await redis.get(f'{message.chat.id}:join')
@@ -181,16 +161,9 @@ async def new_chat_members_handler(message):
             if message.chat.type == 'group':
                 await bot.leave_chat(message.chat.id)
             # Bot added in the group
-            # if it is not added by admin, send_notify
+            # if it is not added by admin, leave
             elif ADMIN != message.from_user.id:
-                await bot.send_message(
-                    ADMIN,
-                    f'Вашего бота добавил '
-                    f'<a href="tg://user?id={message.from_user.id}">'
-                    f'{message.from_user.first_name}</a> в группу '
-                    f'{message.chat.title}'
-                )
-                await Group.save_group(message.chat, readded=True)
+                await bot.leave_chat(message.chat.id)
             else:
                 # Save group in the db
                 # or check mark that the group is deleted (deleted=False)
