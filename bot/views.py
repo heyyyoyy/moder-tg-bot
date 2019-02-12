@@ -6,7 +6,7 @@ from aiogram.types import (
     ReplyKeyboardRemove)
 import re
 
-from .settings import redis
+from .settings import redis, _i18n
 from .callback_factory import spam, admin_menu, group_cb, back
 from .models import Link, Group, manager
 
@@ -18,15 +18,16 @@ async def check_user(member):
     markup = InlineKeyboardMarkup()
     markup.add(
         InlineKeyboardButton(
-            'Подтвердить',
+            _i18n('Confirm'),
             callback_data=spam.new(id=str(member.id), action='filter'))
     )
+    link = '<a href="tg://user?id={0}">{1}</a>'.format(
+            member.id, member.first_name)
     return (
-        'Привет <a href="tg://user?id={0}">{1}</a>! '
-        'Чтобы убедиться, что вы не '
-        'спамер нажмите на кнопку Подтвердить и '
-        'тогда вам будет разрешено писать в чат'.format(
-            member.id, member.first_name),
+        _i18n('Hello {link}! Click the button below '
+              'and confirm that you are a live user!').format(
+            link=link
+        ),
         markup
     )
 
@@ -170,20 +171,3 @@ async def save_link(link, group_id):
         return ('Ссылка добавлена', True, ReplyKeyboardRemove()), await admin_panel(group_id)
 
     return ('Вы ввели неправильную ссылку', False, None), None
-
-
-async def create_grouplist():
-    groups = await manager.execute(Group.select())
-    markup = InlineKeyboardMarkup(row_width=2)
-    markup.add(
-        *(
-            InlineKeyboardButton(
-                group.title,
-                callback_data=group_cb.new(id=str(group.id), action='load'))
-            for group in groups
-        )
-    )
-    return (
-        'Выберите группу из которой хотите скачать базу',
-        markup
-    )

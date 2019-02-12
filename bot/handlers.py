@@ -8,7 +8,7 @@ from .state import add_link
 from .models import UserToGroup, Group
 from .views import (
     check_user, search_link, admin_panel,
-    get_link_menu, save_link, create_grouplist,
+    get_link_menu, save_link,
     check_admin, main_menu, save_settings)
 from .callback_factory import spam, admin_menu, group_cb, back
 from .filters import AdminFilter
@@ -125,13 +125,6 @@ async def handle_link(message, state):
     run_task=True)
 async def handle_download(call, callback_data):
     cid = int(callback_data['id'])
-    # text, kb = await create_grouplist()
-    # await bot.answer_callback_query(call.id)
-    # await bot.send_message(
-    #     call.from_user.id,
-    #     text,
-    #     reply_markup=kb
-    # )
     await bot.answer_callback_query(
         call.id,
         text='Генерирую документ'

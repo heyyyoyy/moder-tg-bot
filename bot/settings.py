@@ -4,7 +4,9 @@ from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.types import ParseMode
 from aiogram.contrib.fsm_storage.redis import RedisStorage2
+from aiogram.contrib.middlewares.i18n import I18nMiddleware
 import logging
+from pathlib import Path
 import asyncio
 
 load_dotenv()
@@ -52,3 +54,14 @@ WEBHOOK_PATH = os.environ['WEBHOOK_PATH']
 
 WEBAPP_HOST = os.environ['WEBAPP_HOST']
 WEBAPP_PORT = os.environ['WEBAPP_PORT']
+
+# i18n
+I18N_DOMAIN = 'bot'
+
+BASE_DIR = Path(__file__).parent
+LOCALES_DIR = BASE_DIR / 'locales'
+
+i18n = I18nMiddleware(I18N_DOMAIN, LOCALES_DIR)
+
+dp.middleware.setup(i18n)
+_i18n = i18n.gettext
