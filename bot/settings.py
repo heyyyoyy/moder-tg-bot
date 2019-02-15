@@ -34,7 +34,7 @@ DB_HOST = os.getenv('DB_HOST')
 DB_NAME = os.environ['DB_NAME']
 DB_USER = os.environ['DB_USER']
 DB_PASSWORD = os.environ['DB_PASSWORD']
-DB_POOL = os.environ['DB_POOL']
+DB_POOL = int(os.environ['DB_POOL'])
 
 
 async def init_redis_pool():
